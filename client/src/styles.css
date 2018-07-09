@@ -1,0 +1,89 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+:root {
+	font-size: 12px;
+}
+
+body {
+	font-family: sans-serif;
+	font-size: 12px;
+}
+
+code {
+	font-family: Menlo, Monaco, "Courier New", monospace;
+	font-size: 1rem;
+}
+
+#app {
+	display: flex;
+	flex-direction: column;
+}
+
+.node {
+	display: flex;
+	padding: 1em 0;
+	margin: 0.5rem;
+	border: 1px solid rgba(0,0,0,0.5);
+	flex-direction: column;
+}
+
+.node .output {
+	padding: 0.5rem 1em;
+	margin: 0 1.05em;
+	border: 1px solid rgba(0,0,0,0.2);
+}
+
+.node .editor-container {
+	width: 100%;
+	transition: height 100ms ease;
+}
+
+.controls {
+	display: flex;
+}
+
+.controls button {
+	padding: 0.5em 1em;
+	outline: none;
+	background: white;
+	border: 1px solid black;
+	cursor: pointer;
+	margin: 0 0.5rem;
+}
+
+.stdoutput {
+	padding: 1em;
+	min-height: 1em;
+	border: 1px solid rgba(0,0,0,0.2);
+	margin: 1rem 0.5rem;
+	font-family: Menlo, Monaco, "Courier New", monospace;
+	position: relative;
+}
+
+.stdoutput::before {
+	position: absolute;
+	background-color: white;
+	top: 0;
+	left: 0.5rem;
+	transform: translateY(-50%);
+}
+
+#app.ok .stdoutput {
+	border-color: lime;
+}
+
+#app.ok .stdoutput::before {
+	content: 'stdout';
+}
+
+#app.error .stdoutput {
+	border-color: red;
+}
+
+#app.error .stdoutput::before {
+	content: 'error';
+}
