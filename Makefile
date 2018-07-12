@@ -2,7 +2,7 @@
 
 build: bin/repl-rs client
 
-dev: target/debug/server
+server-dev: target/debug/server
 	cd server && cargo run
 
 bin/repl-rs: target/release/server
@@ -12,9 +12,9 @@ bin/repl-rs: target/release/server
 target/release/server: server/src/*
 	cd server && cargo build --release
 
-client: target/deploy/client-rs.wasm
+client: target/deploy/client.wasm
 client-dev:
-	cd client-rs && cargo web start --target=wasm32-unknown-unknown
+	cd client && cargo web start --target=wasm32-unknown-unknown
 
-target/deploy/client-rs.wasm: client-rs/src/*
-	cd client-rs && cargo web deploy --target=wasm32-unknown-unknown
+target/deploy/client.wasm: client/src/*
+	cd client && cargo web deploy --target=wasm32-unknown-unknown

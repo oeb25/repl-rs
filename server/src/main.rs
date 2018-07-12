@@ -12,10 +12,8 @@ extern crate serde_derive;
 use shared::*;
 
 use actix_web::middleware::cors::Cors;
-use actix_web::{http, server, App, HttpRequest, HttpResponse, Json, Path, Responder};
+use actix_web::{http, server, App, Json};
 use quote::ToTokens;
-
-const ALL_THE_FILES: &[(&str, &str)] = &include!(concat!(env!("OUT_DIR"), "/all_the_files.rs"));
 
 struct Execution {
     parameters: ExecutionParameters,
@@ -162,31 +160,11 @@ impl Execution {
     }
 }
 
-fn index(_: HttpRequest) -> impl Responder {
-    match ALL_THE_FILES.iter().find(|(name, _)| {
-        let path = std::path::Path::new(name);
-        path.file_name().unwrap() == "index.html"
-    }) {
-        Some(x) => Ok(HttpResponse::with_body(http::StatusCode::OK, x.1)),
-        None => Err(actix_web::error::ErrorBadRequest("Not found")),
-    }
-}
 fn execute(parameters: Json<ExecutionParameters>) -> Json<ExecutionResponse> {
     let parameters = parameters.into_inner();
     let execution = Execution { parameters };
     let result = execution.execute();
     Json(result)
-}
-
-fn static_files(file: Path<String>) -> impl Responder {
-    let file: &str = &file;
-    match ALL_THE_FILES.iter().find(|(name, _)| {
-        let path = std::path::Path::new(name);
-        path.file_name().unwrap() == file
-    }) {
-        Some(x) => HttpResponse::with_body(http::StatusCode::OK, x.1),
-        None => HttpResponse::NotFound().finish(),
-    }
 }
 
 fn main() {
@@ -197,11 +175,7 @@ fn main() {
                 .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
                 .allowed_header(http::header::CONTENT_TYPE)
                 .max_age(3600)
-                .resource("/", |r| r.method(http::Method::GET).with(index))
                 .resource("/execute", |r| r.with(execute))
-                .resource("/{file}", |r| {
-                    r.method(http::Method::GET).with(static_files)
-                })
                 .register()
         })
     }).bind("127.0.0.1:8080")
