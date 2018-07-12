@@ -2,6 +2,3 @@
 **/*.rs.bk
 /bin
 /server/runtree
-/client/.cache
-/client/dist
-/client/node_modules
