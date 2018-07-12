@@ -1,0 +1,10 @@
+[package]
+name = "shared"
+version = "0.1.0"
+authors = ["Oliver Bøving <oliverboving@gmail.com>"]
+
+[dependencies]
+serde = "*"
+serde_json = "*"
+serde_derive = "*"
+failure = "*"

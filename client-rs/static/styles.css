@@ -18,6 +18,11 @@ code {
 	font-size: 1rem;
 }
 
+.faded-text {
+	font-style: italic;
+	color: rgba(0, 0, 0, 0.2);
+}
+
 #app {
 	display: flex;
 	flex-direction: column;
@@ -27,7 +32,7 @@ code {
 	display: flex;
 	padding: 1em 0;
 	margin: 0.5rem;
-	border: 1px solid rgba(0,0,0,0.5);
+	border: 1px solid rgba(0, 0, 0, 0.5);
 	flex-direction: column;
 }
 
@@ -38,7 +43,7 @@ code {
 .node .output {
 	padding: 0.5rem 1em;
 	margin: 0 1.05em;
-	border: 1px solid rgba(0,0,0,0.2);
+	border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .node .editor-row {
@@ -48,6 +53,21 @@ code {
 .node .editor-container {
 	width: 100%;
 	transition: height 100ms ease;
+}
+.node textarea {
+	font-family: Menlo, Monaco, "Courier New", monospace;
+	font-size: 1rem;
+	resize: none;
+	flex: 1;
+	padding: 0.5rem 1em;
+	margin: 0 1.05em;
+	outline: none;
+	border: 1px solid black;
+    overflow: auto;
+    white-space: pre;
+}
+.node textarea:focus {
+	outline: none;
 }
 
 .controls {
@@ -66,7 +86,7 @@ code {
 .stdoutput {
 	padding: 1em;
 	min-height: 1em;
-	border: 1px solid rgba(0,0,0,0.2);
+	border: 1px solid rgba(0, 0, 0, 0.2);
 	margin: 1rem 0.5rem;
 	font-family: Menlo, Monaco, "Courier New", monospace;
 	position: relative;
@@ -85,7 +105,7 @@ code {
 }
 
 #app.ok .stdoutput::before {
-	content: 'stdout';
+	content: "stdout";
 }
 
 #app.error .stdoutput {
@@ -93,5 +113,26 @@ code {
 }
 
 #app.error .stdoutput::before {
-	content: 'error';
+	content: "error";
+}
+
+.stats {
+	display: flex;
+    margin: 0.5rem 1rem;
+    justify-content: flex-end;
+}
+.stats .stat {
+	display: flex;
+	margin: 0 1rem;
+}
+.stats .stat:first-child {
+	margin-left: 0;
+}
+.stats .stat:last-child {
+	margin-right: 0;
+}
+.stats .stat div:first-child {
+	font-weight: bold;
+    content: ":";
+    margin: 0 0.5rem;
 }

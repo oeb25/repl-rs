@@ -10,3 +10,7 @@ serde_json = "*"
 serde_derive = "*"
 syn = {version="0.14",features=["full"]}
 quote = "*"
+failure = "*"
+failure_derive = "*"
+shared = {path="../shared"}
+time = "*"

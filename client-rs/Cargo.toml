@@ -1,0 +1,13 @@
+[package]
+name = "client-rs"
+version = "0.1.0"
+authors = ["Oliver Bøving <oliverboving@gmail.com>"]
+
+[dependencies]
+yew = {git = "https://github.com/DenisKolodin/yew"}
+stdweb = "*"
+shared = {path="../shared"}
+failure = "*"
+serde = "*"
+serde_json = "*"
+serde_derive = "*"

@@ -15,7 +15,7 @@ const $$ = function<T extends string>(
 const keys = function<T>(a: T) {
 	return Object.keys(a) as (keyof T)[];
 };
-const wait = (ms: number) => new Promise(res => setTimeout(() => res(), ms))
+const wait = (ms: number) => new Promise(res => setTimeout(() => res(), ms));
 interface HOptions {
 	className?: string;
 	id?: string;
@@ -51,17 +51,19 @@ type IdeStatus =
 	| { type: "waiting" }
 	| { type: "running" }
 	| { type: "ok"; stdout: string }
-	| { type: "error"; msg: string };
+	| { type: "error"; msg: string; errorNode?: number };
 
 class Ide {
 	container: HTMLElement;
 	runButton: HTMLButtonElement;
 	addNodeButton: HTMLButtonElement;
 	nodesContainer: HTMLDivElement;
-	nodes: CodeNode[] = [];
+	nodes: { [index: number]: CodeNode } = {};
 	controls: HTMLDivElement;
 	stdoutput: HTMLElement;
 	status: IdeStatus = { type: "waiting" };
+
+	nodeIndex = 0;
 
 	constructor(container: HTMLElement) {
 		for (const child of Array.from(container.children)) {
@@ -99,7 +101,6 @@ class Ide {
 
 		const stored = window.localStorage.getItem(EDITOR_STORAGE_KEY);
 		const nodeContents = stored ? (JSON.parse(stored) as string[]) : [""];
-		console.log(nodeContents);
 		for (const content of nodeContents) {
 			this.addNode(content);
 		}
@@ -108,6 +109,10 @@ class Ide {
 	updateStatus(newStatus: IdeStatus) {
 		this.container.classList.remove("running");
 		this.status = newStatus;
+		const nodes = this.nodeList();
+		for (const node of nodes) {
+			node.nodeDOM.classList.remove("error");
+		}
 		switch (this.status.type) {
 			case "waiting":
 				{
@@ -128,47 +133,74 @@ class Ide {
 					this.stdoutput.textContent = this.status.stdout;
 				}
 				break;
-			case "error": {
-				this.runButton.textContent = "Run";
-				this.container.classList.remove("ok");
-				this.container.classList.add("error");
-				this.stdoutput.textContent = this.status.msg;
-			}
+			case "error":
+				{
+					this.runButton.textContent = "Run";
+					this.container.classList.remove("ok");
+					this.container.classList.add("error");
+					this.stdoutput.textContent = this.status.msg;
+					if (typeof this.status.errorNode == "number") {
+						nodes[this.status.errorNode].nodeDOM.classList.add(
+							"error"
+						);
+					}
+				}
+				break;
 		}
 	}
 
+	nodeList = () => keys(this.nodes).map(key => this.nodes[key]);
+
 	async run() {
 		this.updateStatus({ type: "running" });
-		const exeNodes: ExecutionNode[] = this.nodes.map(node => {
+		const exeNodes: ExecutionNode[] = this.nodeList().map(node => {
 			node.output.textContent = "";
 			return { content: node.value };
 		});
+		let errorNode;
 		try {
 			const result = await api.executeAll(exeNodes);
-			console.assert(this.nodes.length == result.nodes.length);
+			if ("err" in result) {
+				errorNode = result.node;
+				throw result.err;
+			}
+			console.assert(this.nodeList().length == result.nodes.length);
 
-			this.nodes.map((node, i) => {
+			this.nodeList().map((node, i) => {
 				node.output.textContent = result.nodes[i].str;
 			});
 
 			this.updateStatus({ type: "ok", stdout: result.stdout });
 		} catch (e) {
-			this.updateStatus({ type: "error", msg: e });
+			this.updateStatus({ type: "error", msg: e, errorNode });
 			return;
 		}
 	}
 
 	addNode(value: string) {
-		const node = new CodeNode(value, () => this.run(), () => this.save());
+		const index = this.nodeIndex++;
+		const node: CodeNode = new CodeNode({
+			value,
+			run: () => this.run(),
+			save: () => this.save(),
+			remove: () => this.remove(index)
+		});
 		this.nodesContainer.appendChild(node.nodeDOM);
-		this.nodes.push(node);
+		this.nodes[index] = node;
 		node.layout();
+	}
+
+	remove(nodeIndex: number) {
+		const node = this.nodes[nodeIndex];
+		node.editor.dispose();
+		this.nodesContainer.removeChild(node.nodeDOM);
+		delete this.nodes[nodeIndex];
 	}
 
 	save() {
 		window.localStorage.setItem(
 			EDITOR_STORAGE_KEY,
-			JSON.stringify(this.nodes.map(node => node.value))
+			JSON.stringify(this.nodeList().map(node => node.value))
 		);
 	}
 }
@@ -177,24 +209,42 @@ const EDITOR_LINE_HEIGHT = 20;
 
 class CodeNode {
 	nodeDOM: HTMLDivElement;
+	editorRow: HTMLDivElement;
+	closeButton: HTMLButtonElement;
 	editorContainer: HTMLDivElement;
 	output: HTMLElement;
 	editor: monaco.editor.IStandaloneCodeEditor;
 	value: string;
 	lineCount: number;
 
-	constructor(value: string, run: () => void, save: () => void) {
-		this.value = value;
+	constructor(props: {
+		value: string;
+		run: () => void;
+		save: () => void;
+		remove: () => void;
+	}) {
+		this.value = props.value;
 		this.editorContainer = h("div", {
 			className: "editor-container"
 		});
+		this.closeButton = h(
+			"button",
+			{
+				onclick: () => props.remove()
+			},
+			"X"
+		);
+		this.editorRow = h("div", { className: "editor-row" }, [
+			this.editorContainer,
+			this.closeButton
+		]);
 		this.output = h("code", { className: "output" });
 		this.nodeDOM = h(
 			"div",
 			{
 				className: "node"
 			},
-			[this.editorContainer, this.output]
+			[this.editorRow, this.output]
 		);
 		this.lineCount = -1;
 		this.editor = monaco.editor.create(this.editorContainer, {
@@ -206,14 +256,14 @@ class CodeNode {
 			scrollBeyondLastLine: false,
 			lineHeight: EDITOR_LINE_HEIGHT,
 			value: this.value,
-			scrollbar: {arrowSize: 0},
+			scrollbar: { arrowSize: 0 }
 		});
 		this.editor.onKeyDown(e => {
-			save();
+			props.save();
 			if (e.shiftKey && e.keyCode == 3) {
 				e.stopPropagation();
 				e.preventDefault();
-				run();
+				props.run();
 			}
 		});
 		this.editor.onKeyUp(e => {
@@ -228,10 +278,7 @@ class CodeNode {
 			this.lineCount = newCount;
 			this.editorContainer.style.height = `${(this.lineCount + 1) *
 				EDITOR_LINE_HEIGHT}px`;
-
-			console.log('pre')
 			await wait(100);
-			console.log('post')
 			this.editor.layout();
 		}
 	}
@@ -247,10 +294,12 @@ interface ExecutionNodeResult {
 	str: string;
 }
 
-interface ExecutionResult {
-	nodes: ExecutionNodeResult[];
-	stdout: string;
-}
+type ExecutionResult =
+	| {
+			nodes: ExecutionNodeResult[];
+			stdout: string;
+	  }
+	| { node?: number; err: string };
 
 class Api {
 	url: string;
@@ -259,7 +308,7 @@ class Api {
 		this.url = url;
 	}
 
-	fetch = async (path: string, body = {}) => {
+	post = async (path: string, body = {}) => {
 		const res = await fetch(`${this.url}${path}`, {
 			method: "POST",
 			headers: {
@@ -272,7 +321,7 @@ class Api {
 	};
 
 	executeAll = (nodes: ExecutionNode[]): Promise<ExecutionResult> =>
-		this.fetch("/execute", { nodes });
+		this.post("/execute", { nodes });
 }
 
 const api = new Api("http://localhost:8080");
