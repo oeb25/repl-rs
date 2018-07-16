@@ -64,14 +64,18 @@ code {
 	margin: 0 1.05em;
 	outline: none;
 	border: 1px solid black;
-    overflow: auto;
-    white-space: pre;
+	overflow: auto;
+	white-space: pre;
+}
+.node .editor-row textarea {
+	color: black;
+	-webkit-text-fill-color: transparent;
 }
 .node .editor-row code {
 	position: absolute;
 	pointer-events: none;
-	width: 100%;
 	border-color: transparent;
+	color: black;
 }
 .node .editor-row textarea:focus {
 	outline: none;
@@ -137,8 +141,8 @@ code {
 
 .stats {
 	display: flex;
-    margin: 0.5rem 1rem;
-    justify-content: flex-end;
+	margin: 0.5rem 1rem;
+	justify-content: flex-end;
 }
 .stats .stat {
 	display: flex;
@@ -152,6 +156,6 @@ code {
 }
 .stats .stat div:first-child {
 	font-weight: bold;
-    content: ":";
-    margin: 0 0.5rem;
+	content: ":";
+	margin: 0 0.5rem;
 }

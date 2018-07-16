@@ -30,7 +30,7 @@ fn is_keyword(ident: &str) -> bool {
     }
 }
 
-fn hightlight(src: &str) -> Html<Model> {
+fn hightlight<T: Component>(src: &str) -> Html<T> {
     enum State {
         Spaces(usize),
         Ident(usize),
@@ -40,7 +40,7 @@ fn hightlight(src: &str) -> Html<Model> {
     }
 
     impl State {
-        fn finish(self, src: &str, i: usize) -> Html<Model> {
+        fn finish<T: Component>(self, src: &str, i: usize) -> Html<T> {
             match self {
                 State::Spaces(j) => html!{{&src[j..i]}},
                 State::Ident(j) => {
@@ -83,72 +83,31 @@ fn hightlight(src: &str) -> Html<Model> {
     let mut state = State::Spaces(0);
     let mut tokens = vec![];
 
-    for (i, c) in src.chars().enumerate() {
+    for (i, c) in src.char_indices() {
         let start_new = match &state {
             State::Spaces(_) => match c {
-                c if c.is_alphabetic() => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Ident(i);
-                    true
-                }
-                c if c.is_numeric() => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Int(i);
-                    true
-                }
+                c if c.is_alphabetic() => true,
+                c if c.is_numeric() => true,
                 _ => true,
             },
             State::Ident(_) => match c {
-                c if c.is_alphanumeric() => {
-                    // ...
-                    false
-                }
-                c if c.is_whitespace() => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Spaces(i);
-                    true
-                }
-                _ => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Spaces(i);
-                    true
-                }
+                c if c.is_alphanumeric() => false,
+                c if c.is_whitespace() => true,
+                _ => true,
             },
             State::Int(j) => match c {
-                c if c.is_numeric() || c == '_' => {
-                    // ...
-                    false
-                }
+                c if c.is_numeric() || c == '_' => false,
                 '.' => {
                     state = State::Float(*j);
                     false
                 }
-                c if c.is_alphabetic() => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Ident(i);
-                    true
-                }
-                _ => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Spaces(i);
-                    true
-                }
+                c if c.is_alphabetic() => true,
+                _ => true,
             },
             State::Float(_) => match c {
-                c if c.is_numeric() => {
-                    // ...
-                    false
-                }
-                c if c.is_alphanumeric() => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Ident(i);
-                    true
-                }
-                _ => {
-                    // tokens.push(state.finish(src, i));
-                    // state = State::Spaces(i);
-                    true
-                }
+                c if c.is_numeric() => false,
+                c if c.is_alphanumeric() => true,
+                _ => true,
             },
             State::String(_, _, true) => true,
             State::String(j, true, _) => {
@@ -210,7 +169,8 @@ impl Node {
         let rows = self
             .code
             .chars()
-            .fold(1, |acc, c| if c == '\n' { acc + 1 } else { acc });
+            .fold(0, |acc, c| if c == '\n' { acc + 1 } else { acc })
+            .max(1);
 
         html! {
             <div class="node",>

@@ -56,13 +56,7 @@ version = "0.1.0"
         // Build
         let build_output = std::process::Command::new("cargo")
             .current_dir(&build_dir)
-            .args(&[
-                "build",
-                "-Z",
-                "unstable-options",
-                "--out-dir",
-                build_dir.join("./target").to_str().unwrap(),
-            ])
+            .arg("build")
             .output()
             .expect("failed to build");
         let build_time = time::PreciseTime::now();
@@ -72,7 +66,7 @@ version = "0.1.0"
         }
 
         // Run
-        let output = std::process::Command::new(build_dir.join("./target/runtree"))
+        let output = std::process::Command::new(build_dir.join("./target/debug/runtree"))
             .current_dir(run_dir)
             .output()
             .expect("failed to execute");
@@ -206,7 +200,7 @@ fn execute(
     (req, parameters): (actix_web::HttpRequest<AppState>, Json<ExecutionParameters>),
 ) -> Result<Json<ExecutionResponse>, failure::Error> {
     let state = req.state();
-    println!("runninging {:?}", state.build_tmp_dir.path());
+    println!("runninging {:?}", state.build_dir());
     let execution = Execution {
         run_dir: None,
         parameters: parameters.into_inner(),
@@ -217,17 +211,23 @@ fn execute(
 
 #[allow(dead_code)]
 struct AppState {
-    build_tmp_dir: tempfile::TempDir,
+    build_tmp_dir: Option<tempfile::TempDir>,
     executioner: Executioner,
+}
+
+impl AppState {
+    fn build_dir(&self) -> &std::path::Path {
+        self.build_tmp_dir.as_ref().unwrap().path()
+    }
 }
 
 fn main() {
     server::new(|| {
         let build_tmp_dir = tempfile::tempdir().expect("failed to create temp dir");
-        let executioner = Executioner::new(build_tmp_dir.path().join("./runtree/"))
+        let executioner = Executioner::new(build_tmp_dir.path())
             .expect("failed to create executioner");
         App::with_state(AppState {
-            build_tmp_dir,
+            build_tmp_dir: Some(build_tmp_dir),
             executioner,
         }).configure(|app| {
             Cors::for_app(app)
@@ -238,7 +238,8 @@ fn main() {
                 .resource("/execute", |r| r.with(execute))
                 .register()
         })
-    }).bind("127.0.0.1:8080")
+    })
+        .bind("127.0.0.1:8080")
         .unwrap()
         .run();
 }

@@ -2,7 +2,7 @@
 
 build: bin/repl-rs client
 
-server-dev: target/debug/server
+server-dev:
 	cd server && cargo run
 
 bin/repl-rs: target/release/server
