@@ -53,8 +53,9 @@ code {
 .node .editor-container {
 	width: 100%;
 	transition: height 100ms ease;
+	position: relative;
 }
-.node textarea {
+.node .editor-row textarea, .node .editor-row code {
 	font-family: Menlo, Monaco, "Courier New", monospace;
 	font-size: 1rem;
 	resize: none;
@@ -66,8 +67,26 @@ code {
     overflow: auto;
     white-space: pre;
 }
-.node textarea:focus {
+.node .editor-row code {
+	position: absolute;
+	pointer-events: none;
+	width: 100%;
+	border-color: transparent;
+}
+.node .editor-row textarea:focus {
 	outline: none;
+}
+
+.sh-ident.sh-keyword {
+	color: blue;
+}
+
+.sh-int, .sh-float {
+	color: blue;
+}
+
+.sh-string {
+	color: green;
 }
 
 .controls {

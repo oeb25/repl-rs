@@ -17,6 +17,175 @@ use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::ConsoleService;
 
+fn is_keyword(ident: &str) -> bool {
+    match ident {
+        "_" | "abstract" | "alignof" | "as" | "become" | "box" | "break" | "catch" | "const"
+        | "continue" | "crate" | "default" | "do" | "else" | "enum" | "extern" | "false"
+        | "final" | "fn" | "for" | "if" | "impl" | "in" | "let" | "loop" | "macro" | "match"
+        | "mod" | "move" | "mut" | "offsetof" | "override" | "priv" | "proc" | "pure" | "pub"
+        | "ref" | "return" | "self" | "sizeof" | "static" | "struct" | "super" | "trait"
+        | "true" | "type" | "typeof" | "union" | "unsafe" | "unsized" | "use" | "virtual"
+        | "where" | "while" | "yield" => true,
+        _ => false,
+    }
+}
+
+fn hightlight(src: &str) -> Html<Model> {
+    enum State {
+        Spaces(usize),
+        Ident(usize),
+        Int(usize),
+        Float(usize),
+        String(usize, bool, bool),
+    }
+
+    impl State {
+        fn finish(self, src: &str, i: usize) -> Html<Model> {
+            match self {
+                State::Spaces(j) => html!{{&src[j..i]}},
+                State::Ident(j) => {
+                    let ident = &src[j..i];
+                    html!{
+                        <span class=if is_keyword(ident) {
+                            "sh-ident sh-keyword"
+                        } else {
+                            "sh-ident"
+                        },>
+                            {ident}
+                        </span>
+                    }
+                }
+                State::Int(j) => {
+                    html!{
+                        <span class="sh-int",>
+                            {&src[j..i]}
+                        </span>
+                    }
+                }
+                State::Float(j) => {
+                    html!{
+                        <span class="sh-float",>
+                            {&src[j..i]}
+                        </span>
+                    }
+                }
+                State::String(j, _, _) => {
+                    html!{
+                        <span class="sh-string",>
+                            {&src[j..i]}
+                        </span>
+                    }
+                }
+            }
+        }
+    }
+
+    let mut state = State::Spaces(0);
+    let mut tokens = vec![];
+
+    for (i, c) in src.chars().enumerate() {
+        let start_new = match &state {
+            State::Spaces(_) => match c {
+                c if c.is_alphabetic() => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Ident(i);
+                    true
+                }
+                c if c.is_numeric() => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Int(i);
+                    true
+                }
+                _ => true,
+            },
+            State::Ident(_) => match c {
+                c if c.is_alphanumeric() => {
+                    // ...
+                    false
+                }
+                c if c.is_whitespace() => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Spaces(i);
+                    true
+                }
+                _ => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Spaces(i);
+                    true
+                }
+            },
+            State::Int(j) => match c {
+                c if c.is_numeric() || c == '_' => {
+                    // ...
+                    false
+                }
+                '.' => {
+                    state = State::Float(*j);
+                    false
+                }
+                c if c.is_alphabetic() => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Ident(i);
+                    true
+                }
+                _ => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Spaces(i);
+                    true
+                }
+            },
+            State::Float(_) => match c {
+                c if c.is_numeric() => {
+                    // ...
+                    false
+                }
+                c if c.is_alphanumeric() => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Ident(i);
+                    true
+                }
+                _ => {
+                    // tokens.push(state.finish(src, i));
+                    // state = State::Spaces(i);
+                    true
+                }
+            },
+            State::String(_, _, true) => true,
+            State::String(j, true, _) => {
+                state = State::String(*j, false, false);
+                false
+            }
+            State::String(j, false, _) => match c {
+                '\\' => {
+                    state = State::String(*j, true, false);
+                    false
+                }
+                '"' => {
+                    state = State::String(*j, false, true);
+                    false
+                },
+                _ => false,
+            },
+        };
+
+        if start_new {
+            tokens.push(state.finish(src, i));
+
+            state = match c {
+                '"' => State::String(i, false, false),
+                c if c.is_alphabetic() => State::Ident(i),
+                c if c.is_numeric() => State::Int(i),
+                _ => State::Spaces(i),
+            };
+        }
+    }
+
+    let i = src.len();
+    tokens.push(state.finish(src, i));
+
+    html!{{for tokens}}
+}
+
 struct Node {
     code: String,
     result: Option<NodeResult>,
@@ -47,6 +216,7 @@ impl Node {
             <div class="node",>
                 <div class="editor-row",>
                     <textarea
+                        spellcheck="false",
                         value={&self.code},
                         oninput=|e| change(e.value),
                         onkeydown=|e| {
@@ -59,6 +229,9 @@ impl Node {
                         },
                         rows=rows,
                     />
+                    <code>
+                        {hightlight(&self.code)}
+                    </code>
                 </div>
                 <code class="output",>{output}</code>
             </div>
@@ -169,6 +342,12 @@ fn run(
 
 impl Renderable<Model> for Model {
     fn view(&self) -> Html<Self> {
+        let nodes = self
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(i, node)| node.view(move |value| Msg::ChangeNode(i, value), || Msg::Run));
+
         let stats = match &self.state {
             ExecutionState::Done(Ok(res)) => {
                 html!{
@@ -194,13 +373,7 @@ impl Renderable<Model> for Model {
                 ExecutionState::Done(Ok(_)) => "ok",
                 ExecutionState::Done(Err(_)) => "error",
             },>
-                <div class="nodes",>
-                    {for self.nodes
-                        .iter()
-                        .enumerate()
-                        .map(|(i, node)| node.view(move |value| Msg::ChangeNode(i, value), || Msg::Run))
-                    }
-                </div>
+                <div class="nodes",>{for nodes}</div>
                 <div class="controls",>
                     <button onclick=|_| Msg::Run,>{"Run"}</button>
                     <button onclick=|_| Msg::AddNode(String::new()),>{"Add Node"}</button>

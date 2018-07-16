@@ -46,9 +46,9 @@ pub enum XXError {
     BuildError { error: String },
     #[fail(
         display = "Run Error.\n  Running the program failed with output:\n{}",
-        error
+        stderr
     )]
-    RunError { error: String },
+    RunError { stdout: String, stderr: String },
 }
 
 pub type ExecutionResponse = Result<ExecutionResult, XXError>;
